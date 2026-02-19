@@ -91,16 +91,20 @@ export namespace Agent {
       },
       plan: {
         name: "plan",
-        description: "Plan mode. Can only write to PLAN.md in the project root.",
+        description: "Plan mode. Disallows all edit tools except plan files.",
         options: {},
         permission: PermissionNext.merge(
           defaults,
           PermissionNext.fromConfig({
             question: "allow",
             plan_exit: "allow",
+            external_directory: {
+              [path.join(Global.Path.data, "plans", "*")]: "allow",
+            },
             edit: {
               "*": "deny",
-              "PLAN.md": "allow",
+              [path.join(".opencode", "plans", "*.md")]: "allow",
+              [path.relative(Instance.worktree, path.join(Global.Path.data, path.join("plans", "*.md")))]: "allow",
             },
           }),
           user,
