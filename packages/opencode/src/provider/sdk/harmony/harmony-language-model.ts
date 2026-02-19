@@ -111,7 +111,13 @@ export class HarmonyLanguageModel implements LanguageModelV2 {
           }
           case "finish": {
             finishReason = value.finishReason
-            usage = value.usage ?? {}
+            usage = {
+              inputTokens: value.usage?.inputTokens ?? 0,
+              outputTokens: value.usage?.outputTokens ?? 0,
+              totalTokens: value.usage?.totalTokens ?? 0,
+              reasoningTokens: 0,
+              cachedInputTokens: 0,
+            }
             break
           }
         }
