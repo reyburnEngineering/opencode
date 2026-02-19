@@ -40,6 +40,8 @@ export namespace ProviderTransform {
         return "gateway"
       case "@openrouter/ai-sdk-provider":
         return "openrouter"
+      case "@opencode-ai/harmony":
+        return "harmony"
     }
     return undefined
   }
@@ -653,6 +655,11 @@ export namespace ProviderTransform {
           }
         }
         return Object.fromEntries(WIDELY_SUPPORTED_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
+
+      case "@opencode-ai/harmony":
+        return Object.fromEntries(
+          ["low", "medium", "high"].map((effort) => [effort, { reasoningLevel: effort }]),
+        )
     }
     return {}
   }
