@@ -5,7 +5,7 @@ import type {
   LanguageModelV2StreamPart,
 } from "@ai-sdk/provider"
 import { renderTools, renderMessages, renderReasoningLevel } from "./harmony-renderer"
-import { createHarmonyStreamParser } from "./harmony-parser"
+import { createHarmonyStreamParser, type HarmonyUsage } from "./harmony-parser"
 
 export interface HarmonyModelSettings {
   baseURL: string
@@ -197,6 +197,7 @@ export class HarmonyLanguageModel implements LanguageModelV2 {
       prompt,
       max_tokens: options.maxOutputTokens ?? 4096,
       stream: true,
+      stream_options: { include_usage: true },
       stop: ["<|call|>"],
       skip_special_tokens: false,
       include_stop_str_in_output: true,
@@ -239,8 +240,9 @@ export class HarmonyLanguageModel implements LanguageModelV2 {
     const toolNames = options.tools
       ?.filter((t) => t.type === "function")
       .map((t) => t.name)
-    const sseStream = this.createSSETextStream(response.body)
-    const harmonyParser = createHarmonyStreamParser(toolNames)
+    const usage: HarmonyUsage = {}
+    const sseStream = this.createSSETextStream(response.body, usage)
+    const harmonyParser = createHarmonyStreamParser(toolNames, usage)
     const parsedStream = sseStream.pipeThrough(harmonyParser)
 
     return {
@@ -259,6 +261,7 @@ export class HarmonyLanguageModel implements LanguageModelV2 {
    */
   private createSSETextStream(
     body: ReadableStream<Uint8Array>,
+    usage?: HarmonyUsage,
   ): ReadableStream<string> {
     const decoder = new TextDecoder()
     let buffer = ""
@@ -272,7 +275,7 @@ export class HarmonyLanguageModel implements LanguageModelV2 {
             if (done) {
               // Process any remaining buffer
               if (buffer.trim().length > 0) {
-                processLines(buffer, controller)
+                processLines(buffer, controller, usage)
               }
               controller.close()
               break
@@ -286,7 +289,7 @@ export class HarmonyLanguageModel implements LanguageModelV2 {
             buffer = lines.pop() ?? ""
 
             for (const line of lines) {
-              processLine(line.trim(), controller)
+              processLine(line.trim(), controller, usage)
             }
           }
         } catch (error) {
@@ -299,14 +302,14 @@ export class HarmonyLanguageModel implements LanguageModelV2 {
   }
 }
 
-function processLines(text: string, controller: ReadableStreamDefaultController<string>) {
+function processLines(text: string, controller: ReadableStreamDefaultController<string>, usage?: HarmonyUsage) {
   const lines = text.split("\n")
   for (const line of lines) {
-    processLine(line.trim(), controller)
+    processLine(line.trim(), controller, usage)
   }
 }
 
-function processLine(line: string, controller: ReadableStreamDefaultController<string>) {
+function processLine(line: string, controller: ReadableStreamDefaultController<string>, usage?: HarmonyUsage) {
   if (!line.startsWith("data: ")) return
 
   const data = line.slice(6) // Remove "data: " prefix
@@ -317,11 +320,19 @@ function processLine(line: string, controller: ReadableStreamDefaultController<s
   try {
     const parsed = JSON.parse(data) as {
       choices?: Array<{ text?: string; finish_reason?: string | null }>
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }
     }
 
     const text = parsed.choices?.[0]?.text
     if (text) {
       controller.enqueue(text)
+    }
+
+    // Extract usage from the SSE chunk (vLLM sends it on the final chunk)
+    if (usage && parsed.usage) {
+      if (parsed.usage.prompt_tokens != null) usage.inputTokens = parsed.usage.prompt_tokens
+      if (parsed.usage.completion_tokens != null) usage.outputTokens = parsed.usage.completion_tokens
+      if (parsed.usage.total_tokens != null) usage.totalTokens = parsed.usage.total_tokens
     }
   } catch {
     // Skip malformed JSON lines

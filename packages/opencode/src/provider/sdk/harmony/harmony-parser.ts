@@ -137,7 +137,13 @@ function isValidJson(text: string): boolean {
  *   - **Chunk-boundary safe**: Partial control tokens are held in a
  *     lookahead buffer until the next chunk confirms or denies a match.
  */
-export function createHarmonyStreamParser(knownTools?: string[]): TransformStream<string, LanguageModelV2StreamPart> {
+export interface HarmonyUsage {
+  inputTokens?: number
+  outputTokens?: number
+  totalTokens?: number
+}
+
+export function createHarmonyStreamParser(knownTools?: string[], usage?: HarmonyUsage): TransformStream<string, LanguageModelV2StreamPart> {
   const state = createInitialState()
 
   // Track whether we have emitted start events so we can pair them with
@@ -623,9 +629,9 @@ export function createHarmonyStreamParser(knownTools?: string[]): TransformStrea
           type: "finish",
           finishReason,
           usage: {
-            inputTokens: undefined,
-            outputTokens: undefined,
-            totalTokens: undefined,
+            inputTokens: usage?.inputTokens,
+            outputTokens: usage?.outputTokens,
+            totalTokens: usage?.totalTokens,
           },
         })
       } catch (error) {
@@ -638,9 +644,9 @@ export function createHarmonyStreamParser(knownTools?: string[]): TransformStrea
           type: "finish",
           finishReason: "error",
           usage: {
-            inputTokens: undefined,
-            outputTokens: undefined,
-            totalTokens: undefined,
+            inputTokens: usage?.inputTokens,
+            outputTokens: usage?.outputTokens,
+            totalTokens: usage?.totalTokens,
           },
         })
       }
