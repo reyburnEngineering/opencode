@@ -177,9 +177,13 @@ export class HarmonyLanguageModel implements LanguageModelV2 {
     // 3. Build the full prompt
     //    Tools and reasoning level go inside a system message block so
     //    the model recognises them as part of the Harmony structure.
+    const reasoningLevel =
+      (options.providerOptions?.harmony as any)?.reasoningLevel ??
+      (options as any).reasoningLevel ??
+      this.settings.reasoningLevel
     let preamble = ""
-    if (this.settings.reasoningLevel) {
-      preamble += renderReasoningLevel(this.settings.reasoningLevel) + "\n"
+    if (reasoningLevel) {
+      preamble += renderReasoningLevel(reasoningLevel) + "\n"
     }
     if (toolsText) {
       preamble += toolsText
