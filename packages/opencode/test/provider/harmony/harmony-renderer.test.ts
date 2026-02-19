@@ -74,7 +74,7 @@ describe("jsonSchemaToTypeScript", () => {
   })
 
   test("boolean schema returns any", () => {
-    expect(jsonSchemaToTypeScript(true)).toBe("any")
+    expect(jsonSchemaToTypeScript(true as any)).toBe("any")
   })
 
   test("empty object", () => {

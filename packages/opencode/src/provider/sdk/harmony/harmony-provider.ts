@@ -55,5 +55,11 @@ export function createHarmony(options: HarmonyProviderSettings = {}): Provider {
 
   return {
     languageModel: createLanguageModel,
+    textEmbeddingModel: () => {
+      throw new Error("Harmony provider does not support text embeddings")
+    },
+    imageModel: () => {
+      throw new Error("Harmony provider does not support image generation")
+    },
   }
 }

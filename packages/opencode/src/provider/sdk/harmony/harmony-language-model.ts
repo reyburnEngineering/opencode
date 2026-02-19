@@ -43,13 +43,13 @@ export class HarmonyLanguageModel implements LanguageModelV2 {
 
     const content: LanguageModelV2Content[] = []
     let finishReason: LanguageModelV2FinishReason = "unknown"
-    let usage: {
-      inputTokens?: number
-      outputTokens?: number
-      totalTokens?: number
-      reasoningTokens?: number
-      cachedInputTokens?: number
-    } = {}
+    let usage = {
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      reasoningTokens: 0,
+      cachedInputTokens: 0,
+    }
 
     // Accumulate text and tool call pieces from stream parts
     const textParts: Map<string, { text: string }> = new Map()
