@@ -96,9 +96,15 @@ function isPrefixOfControlToken(candidate: string): boolean {
  * Extract the tool name from a Harmony `to=functions.{name}` directive.
  * Returns the function name, or null if the format doesn't match.
  */
-function extractToolName(headerText: string): string | null {
+function extractToolName(headerText: string, knownTools?: string[]): string | null {
   const match = headerText.match(/to=functions\.(\S+)/)
-  return match ? match[1] : null
+  if (!match) return null
+  const raw = match[1]
+  if (!knownTools || knownTools.length === 0 || knownTools.includes(raw)) return raw
+  // Fuzzy: if the model truncated the name, try prefix match
+  const candidates = knownTools.filter((t) => t.startsWith(raw))
+  if (candidates.length === 1) return candidates[0]
+  return raw
 }
 
 /**
@@ -131,7 +137,7 @@ function isValidJson(text: string): boolean {
  *   - **Chunk-boundary safe**: Partial control tokens are held in a
  *     lookahead buffer until the next chunk confirms or denies a match.
  */
-export function createHarmonyStreamParser(): TransformStream<string, LanguageModelV2StreamPart> {
+export function createHarmonyStreamParser(knownTools?: string[]): TransformStream<string, LanguageModelV2StreamPart> {
   const state = createInitialState()
 
   // Track whether we have emitted start events so we can pair them with
@@ -427,7 +433,7 @@ export function createHarmonyStreamParser(): TransformStream<string, LanguageMod
             // Check for tool call directives in the rest of the header
             const rest = trimmed.slice(ch.length)
             if (state.currentChannel === "commentary") {
-              const toolName = extractToolName(rest)
+              const toolName = extractToolName(rest, knownTools)
               if (toolName) {
                 state.pendingToolCall = { name: toolName, arguments: "" }
               }
@@ -438,7 +444,7 @@ export function createHarmonyStreamParser(): TransformStream<string, LanguageMod
       } else if (state.currentChannel === "commentary") {
         // We may see "to=functions.X" after the channel name was already set
         if (!state.pendingToolCall) {
-          const toolName = extractToolName(headerText)
+          const toolName = extractToolName(headerText, knownTools)
           if (toolName) {
             state.pendingToolCall = { name: toolName, arguments: "" }
           }

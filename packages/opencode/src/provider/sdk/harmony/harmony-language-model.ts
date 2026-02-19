@@ -236,8 +236,11 @@ export class HarmonyLanguageModel implements LanguageModelV2 {
     const responseHeaders = Object.fromEntries(response.headers.entries())
 
     // 6. Parse SSE stream, extract text deltas, and pipe through Harmony stream parser
+    const toolNames = options.tools
+      ?.filter((t) => t.type === "function")
+      .map((t) => t.name)
     const sseStream = this.createSSETextStream(response.body)
-    const harmonyParser = createHarmonyStreamParser()
+    const harmonyParser = createHarmonyStreamParser(toolNames)
     const parsedStream = sseStream.pipeThrough(harmonyParser)
 
     return {
